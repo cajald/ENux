@@ -4,6 +4,7 @@
  * Depends on libui-ng (checkout https://github.com/libui-ng/libui-ng), build with make.
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,13 +16,29 @@ typedef struct App {
 	uiTab*         tab;
 	uiEntry*       userEnt;
 	uiEntry*       passEnt;
+	uiEntry*       rootPassEnt;
 	uiCombobox*    diskSelect;
+	uiCheckbox*    separateHome;
+	uiCheckbox*    enableSwap;
+	uiSpinbox*     swapSize;
+	uiCombobox*    fsType;
 	uiProgressBar* progress;
 	uiLabel*       status;
 	int            installing;
 } App;
 
-int
+static void
+onSwapToggle(uiCheckbox* c, void* data)
+{
+	App* app = data;
+	int checked = uiCheckboxChecked(app->enableSwap);
+	if (checked)
+		uiControlEnable(uiControl(app->swapSize));
+	else
+		uiControlDisable(uiControl(app->swapSize));
+}
+
+static int
 onClosing(uiWindow* w, void* data)
 {
 	(void)w;
@@ -43,6 +60,8 @@ static void
 updateProg(void* data)
 {
 	App* app = data;
+	if (!app->installing)
+		return;
 	if (app->progress == NULL) return;
 	static int value = 0;
 	value += 10;
@@ -55,7 +74,10 @@ updateProg(void* data)
 	snprintf(buf, sizeof(buf), "Installing... %d%%", value);
 	uiLabelSetText(app->status, buf);
 
-	if (value == 100) {
+	if (value >= 100) {
+		if (!app->installing)
+			return;
+
 		app->installing = 0;
 		uiMsgBox(app->win,
 			"Finished.",
@@ -86,73 +108,155 @@ onInstallClicked(uiButton* b, void* data)
 static uiControl*
 makeWelcomePage(void)
 {
-	uiBox* v = uiNewVerticalBox();
-	uiBoxSetPadded(v, 1);
+	uiForm* f = uiNewForm();
+	uiFormSetPadded(f, 1);
 
-	uiBoxAppend(v,
-		uiControl(uiNewLabel("Welciome to the ENux installer!")),
+	uiFormAppend(f,
+		"",
+		uiControl(uiNewLabel("Welcome to the ENux installer!")),
 		0
 	);
 
-	uiBoxAppend(v,
-		uiControl(uiNewLabel("This setup will help you set up a working ENUX system "
-		                     "on your machine")),
+	uiFormAppend(f,
+		"",
+		uiControl(uiNewLabel(
+			"This setup will help you set up a working ENux system on your machine"
+		)),
 		0
 	);
 
-	return uiControl(v);
+	return uiControl(f);
 }
 
 static uiControl*
 makeDiskPage(App* app)
 {
-	uiBox* v = uiNewVerticalBox();
-	uiBoxSetPadded(v, 1);
+	uiForm* f = uiNewForm();
+	uiFormSetPadded(f, 1);
 
 	app->diskSelect = uiNewCombobox();
 	uiComboboxAppend(app->diskSelect, "/dev/sda (512GiB SSD)");
 	uiComboboxAppend(app->diskSelect, "/dev/nvme0n1 (1TiB NVMe)");
 	uiComboboxAppend(app->diskSelect, "/dev/sda (2GB Extractible medium)");
 
-	uiBoxAppend(v, uiControl(uiNewLabel("Select install disk:")), 0);
-	uiBoxAppend(v, uiControl(app->diskSelect), 0);
+	uiFormAppend(f,
+		"Select install disk",
+		uiControl(app->diskSelect),
+		0
+	);
 
-	return uiControl(v);
+	app->fsType = uiNewCombobox();
+	uiComboboxAppend(app->fsType, "ext4");
+	uiComboboxAppend(app->fsType, "btrfs");
+	uiComboboxAppend(app->fsType, "zfs");
+
+	uiFormAppend(f,
+		"Select filesystem type",
+		uiControl(app->fsType),
+		0
+	);
+
+	app->separateHome = uiNewCheckbox("Separate /home partition");
+
+	uiFormAppend(f,
+		"Separate home",
+		uiControl(app->separateHome),
+		0
+	);
+
+	app->enableSwap = uiNewCheckbox("Enable swap");
+	uiCheckboxOnToggled(app->enableSwap, onSwapToggle, app);
+
+	uiFormAppend(f,
+		"Enable swap",
+		uiControl(app->enableSwap),
+		0
+	);
+
+	app->swapSize = uiNewSpinbox(0, INT32_MAX);
+	uiSpinboxSetValue(app->swapSize, 1024);
+	uiControlDisable(uiControl(app->swapSize)); /* start disabled */
+
+	uiFormAppend(f,
+		"Swap size (in MB)",
+		uiControl(app->swapSize),
+		0
+	);
+
+	return uiControl(f);
 }
 
 static uiControl*
 makeUserPage(App* app)
 {
-	uiBox* v = uiNewVerticalBox();
-	uiBoxSetPadded(v, 1);
-	
+	uiForm* f = uiNewForm();
+	uiFormSetPadded(f, 1);
+
 	app->userEnt = uiNewEntry();
 	app->passEnt = uiNewPasswordEntry();
+	app->rootPassEnt = uiNewPasswordEntry();
 
-	uiBoxAppend(v, uiControl(uiNewLabel("Create an user account")), 0);
-	uiBoxAppend(v, uiControl(app->userEnt), 0);
-	uiBoxAppend(v, uiControl(app->passEnt), 0);
+	uiFormAppend(f,
+		"Username",
+		uiControl(app->userEnt),
+		0
+	);
 
-	return uiControl(v);
+	uiFormAppend(f,
+		"Password",
+		uiControl(app->passEnt),
+		0
+	);
+
+	uiFormAppend(f,
+		"Root password",
+		uiControl(app->rootPassEnt),
+		0
+	);
+
+	return uiControl(f);
 }
 
 static uiControl*
 makeInstallPage(App* app)
 {
-	uiBox* v = uiNewVerticalBox();
-	uiBoxSetPadded(v, 1);
+	uiBox* vbox = uiNewVerticalBox();
+	uiBoxSetPadded(vbox, 1);
 
+	/* status */
+	app->status = uiNewLabel("Ready to install.");
+	uiGroup* statusGroup = uiNewGroup("Status");
+	uiGroupSetChild(statusGroup, uiControl(app->status));
+
+	uiBoxAppend(uiBox(vbox),
+		uiControl(statusGroup),
+		0
+	);
+
+	/* progress */
 	app->progress = uiNewProgressBar();
-	app->status   = uiNewLabel("Ready to install.");
+
+	uiGroup* progressGroup = uiNewGroup("Progress");
+	uiGroupSetChild(progressGroup, uiControl(app->progress));
+
+	uiBoxAppend(uiBox(vbox),
+		uiControl(progressGroup),
+		0
+	);
 
 	uiButton* btn = uiNewButton("Install now!");
 	uiButtonOnClicked(btn, onInstallClicked, app);
 
-	uiBoxAppend(v, uiControl(app->status), 0);
-	uiBoxAppend(v, uiControl(app->progress), 0);
-	uiBoxAppend(v, uiControl(btn), 0);
+	uiBoxAppend(uiBox(vbox),
+		uiControl(uiNewHorizontalSeparator()),
+		0
+	);
+	uiBoxAppend(uiBox(vbox),
+		uiControl(btn),
+		0
+	);
 
-	return uiControl(v);
+	return uiControl(vbox);
 }
 
 /******************************************************************************
