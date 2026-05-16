@@ -4,11 +4,11 @@
 # This builds the GUI installer, and provides a few utilities to help install the rest
 #
 
-CFILES   := enux-installer-gui.c
+CFILES   := gui.c main.c
 OFILES   := $(CFILES:.c=.o)
 TARG     := enux-installer-gui
 CC       := gcc
-CFLAGS   := -std=c99 -Wall -Werror `pkg-config --cflags gtk+-3.0`
+CFLAGS   := -std=c99 -Wall -Werror `pkg-config --cflags gtk+-3.0` -g
 CPPFLAGS := -DIN_ENUX_INSTALLER -D_POSIX_C_SOURCE=200809L
 LDFLAGS  := `pkg-config --libs gtk+-3.0` -lui
 
@@ -25,5 +25,5 @@ clean:
 	rm -f $(OFILES) $(TARG)
 
 install:
-	install -Dm 755 ${TARG} /usr/bin/enux-installer-gui
+	install -Dsm 755 ${TARG} /usr/bin/enux-installer-gui
 

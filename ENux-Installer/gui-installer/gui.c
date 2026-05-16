@@ -1,7 +1,5 @@
 /*
- * enux-installer.c -- GUI installer for ENux
- *
- * Depends on libui-ng (checkout https://github.com/libui-ng/libui-ng), build with make.
+ * gui.c -- GUI installer for ENux -- UI
  */
 
 #include <stdint.h>
@@ -10,6 +8,8 @@
 #include <string.h>
 
 #include <ui.h>
+
+#include "ui.h"
 
 typedef struct App {
 	uiWindow*      win;
@@ -374,8 +374,8 @@ makeNavBar(App* app)
  **                                  main                                    **
  *****************************************************************************/
 
-int
-main(int argc, char** argv)
+App*
+setupUI(void)
 {
 	uiInitOptions o = { 0 };
 	const char* err = uiInit(&o);
@@ -383,42 +383,52 @@ main(int argc, char** argv)
 	if (err != NULL) {
 		fprintf(stderr, "init errror (libui): %s\n", err);
 		uiFreeInitError(err);
-		return EXIT_FAILURE;
+		return NULL;
 	}
 
-	App app;
-	memset(&app, 0, sizeof(app));
+	App* app = (App*)calloc(1, sizeof(App));
 
-	app.win = uiNewWindow("ENux Installer", 600, 400, 1);
-	uiWindowOnClosing(app.win, onClosing, &app);
+	app->win = uiNewWindow("ENux Installer", 600, 400, 1);
+	uiWindowOnClosing(app->win, onClosing, &app);
 
-	app.vbox = uiNewVerticalBox();
-	uiBoxSetPadded(app.vbox, 1);
+	app->vbox = uiNewVerticalBox();
+	uiBoxSetPadded(app->vbox, 1);
 
 	/* pages */
-	app.pages[0] = makeWelcomePage();
-	app.pages[1] = makeDiskPage(&app);
-	app.pages[2] = makeUserPage(&app);
-	app.pages[3] = makeInstallPage(&app);
+	app->pages[0] = makeWelcomePage();
+	app->pages[1] = makeDiskPage(app);
+	app->pages[2] = makeUserPage(app);
+	app->pages[3] = makeInstallPage(app);
 
-	app.tab = uiNewTab();
+	app->tab = uiNewTab();
 
-	uiTabAppend(app.tab, "Welcome", app.pages[0]);
-	uiTabAppend(app.tab, "Disk", app.pages[1]);
-	uiTabAppend(app.tab, "User", app.pages[2]);
-	uiTabAppend(app.tab, "Install", app.pages[3]);
-	uiTabOnSelected(app.tab, onTabChanged, &app);
+	uiTabAppend(app->tab, "Welcome", app->pages[0]);
+	uiTabAppend(app->tab, "Disk", app->pages[1]);
+	uiTabAppend(app->tab, "User", app->pages[2]);
+	uiTabAppend(app->tab, "Install", app->pages[3]);
+	uiTabOnSelected(app->tab, onTabChanged, &app);
 
-	uiBoxAppend(app.vbox, uiControl(app.tab), 1);
-	uiBoxAppend(app.vbox, makeNavBar(&app), 0);
+	uiBoxAppend(app->vbox, uiControl(app->tab), 1);
+	uiBoxAppend(app->vbox, makeNavBar(app), 0);
 
-	uiWindowSetChild(app.win, uiControl(app.vbox));
-	uiWindowSetMargined(app.win, 1);
+	uiWindowSetChild(app->win, uiControl(app->vbox));
+	uiWindowSetMargined(app->win, 1);
 
-	uiControlShow(uiControl(app.win));
+	uiControlShow(uiControl(app->win));
 
+	return app;
+}
+
+void
+runUI(void)
+{
 	uiMain();
+}
+
+void
+teardownUI(App* app)
+{
+	free(app);
 	uiUninit();
-	return EXIT_SUCCESS;
 }
 
