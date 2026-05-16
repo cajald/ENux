@@ -14,6 +14,9 @@
 typedef struct App {
 	uiWindow*      win;
 	uiTab*         tab;
+	uiBox*         vbox;
+	uiButton*      nextBtn;
+	uiButton*      backBtn;
 	uiEntry*       userEnt;
 	uiEntry*       passEnt;
 	uiEntry*       rootPassEnt;
@@ -25,7 +28,56 @@ typedef struct App {
 	uiProgressBar* progress;
 	uiLabel*       status;
 	int            installing;
+	int            progValue;
+	int            page;
+	uiControl*     pages[4];
 } App;
+
+static void
+updateNav(App* app)
+{
+	if (app->page <= 0)
+		uiControlDisable(uiControl(app->backBtn));
+	else
+		uiControlEnable(uiControl(app->backBtn));
+
+	if (app->page >= 3)
+		uiControlDisable(uiControl(app->nextBtn));
+	else
+		uiControlEnable(uiControl(app->nextBtn));
+}
+
+static void
+onTabChanged(uiTab* t, void* data)
+{
+	App* app = data;
+
+	if (uiTabSelected(t) != app->page)
+		uiTabSetSelected(t, app->page);
+}
+
+static void
+onNextClicked(uiButton* b, void* data)
+{
+	App* app = data;
+	if (app->page < 3)
+		app->page++;
+
+	uiTabSetSelected(app->tab, app->page);
+	updateNav(app);
+}
+
+static void
+onBackClicked(uiButton* b, void* data)
+{
+	App* app = data;
+
+	if (app->page > 0)
+		app->page--;
+
+	uiTabSetSelected(app->tab, app->page);
+	updateNav(app);
+}
 
 static void
 onSwapToggle(uiCheckbox* c, void* data)
@@ -63,18 +115,17 @@ updateProg(void* data)
 	if (!app->installing)
 		return;
 	if (app->progress == NULL) return;
-	static int value = 0;
-	value += 10;
+	app->progValue += 10;
 
-	if (value > 100)
-		value = 100;
+	if (app->progValue > 100)
+		app->progValue = 100;
 
-	uiProgressBarSetValue(app->progress, value);
+	uiProgressBarSetValue(app->progress, app->progValue);
 	char buf[128];
-	snprintf(buf, sizeof(buf), "Installing... %d%%", value);
+	snprintf(buf, sizeof(buf), "Installing... %d%%", app->progValue);
 	uiLabelSetText(app->status, buf);
 
-	if (value >= 100) {
+	if (app->progValue >= 100) {
 		if (!app->installing)
 			return;
 
@@ -259,6 +310,30 @@ makeInstallPage(App* app)
 	return uiControl(vbox);
 }
 
+static uiControl*
+makeNavBar(App* app)
+{
+	uiBox* h = uiNewHorizontalBox();
+	uiBoxSetPadded(h, 1);
+
+	app->backBtn = uiNewButton("< Back");
+	app->nextBtn = uiNewButton("Next >");
+
+	uiButtonOnClicked(app->backBtn, onBackClicked, app);
+	uiButtonOnClicked(app->nextBtn, onNextClicked, app);
+
+	/* align buttons right */
+	uiLabel* spacer = uiNewLabel("");
+
+	uiBoxAppend(h, uiControl(spacer), 1);
+	uiBoxAppend(h, uiControl(app->backBtn), 0);
+	uiBoxAppend(h, uiControl(app->nextBtn), 0);
+
+	updateNav(app);
+
+	return uiControl(h);
+}
+
 /******************************************************************************
  **                                  main                                    **
  *****************************************************************************/
@@ -281,22 +356,27 @@ main(int argc, char** argv)
 	app.win = uiNewWindow("ENux Installer", 600, 400, 1);
 	uiWindowOnClosing(app.win, onClosing, &app);
 
-	app.tab = uiNewTab();
+	app.vbox = uiNewVerticalBox();
+	uiBoxSetPadded(app.vbox, 1);
 
 	/* pages */
-	uiTabAppend(app.tab, "Welcome",
-		makeWelcomePage());
+	app.pages[0] = makeWelcomePage();
+	app.pages[1] = makeDiskPage(&app);
+	app.pages[2] = makeUserPage(&app);
+	app.pages[3] = makeInstallPage(&app);
 
-	uiTabAppend(app.tab, "Disk",
-		makeDiskPage(&app));
+	app.tab = uiNewTab();
 
-	uiTabAppend(app.tab, "User",
-		makeUserPage(&app));
-	
-	uiTabAppend(app.tab, "Install",
-		makeInstallPage(&app));
+	uiTabAppend(app.tab, "Welcome", app.pages[0]);
+	uiTabAppend(app.tab, "Disk", app.pages[1]);
+	uiTabAppend(app.tab, "User", app.pages[2]);
+	uiTabAppend(app.tab, "Install", app.pages[3]);
+	uiTabOnSelected(app.tab, onTabChanged, &app);
 
-	uiWindowSetChild(app.win, uiControl(app.tab));
+	uiBoxAppend(app.vbox, uiControl(app.tab), 1);
+	uiBoxAppend(app.vbox, makeNavBar(&app), 0);
+
+	uiWindowSetChild(app.win, uiControl(app.vbox));
 	uiWindowSetMargined(app.win, 1);
 
 	uiControlShow(uiControl(app.win));
