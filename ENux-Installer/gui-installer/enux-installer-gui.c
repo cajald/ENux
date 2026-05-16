@@ -33,6 +33,10 @@ typedef struct App {
 	uiControl*     pages[4];
 } App;
 
+/******************************************************************************
+ **                                 helpers                                  **
+ *****************************************************************************/
+
 static void
 updateNav(App* app)
 {
@@ -46,6 +50,39 @@ updateNav(App* app)
 	else
 		uiControlEnable(uiControl(app->nextBtn));
 }
+
+static void
+updateProg(void* data)
+{
+	App* app = data;
+	if (!app->installing)
+		return;
+	if (app->progress == NULL) return;
+	app->progValue += 10;
+ 
+	if (app->progValue > 100)
+		app->progValue = 100;
+
+	uiProgressBarSetValue(app->progress, app->progValue);
+	char buf[128];
+	snprintf(buf, sizeof(buf), "Installing... %d%%", app->progValue);
+	uiLabelSetText(app->status, buf);
+
+	if (app->progValue >= 100) {
+		if (!app->installing)
+			return;
+
+		app->installing = 0;
+		uiMsgBox(app->win,
+			"Finished.",
+			"Installation has successfully finished!"
+		);
+	}
+}
+
+/******************************************************************************
+ **                                handlers                                  **
+ *****************************************************************************/
 
 static void
 onTabChanged(uiTab* t, void* data)
@@ -107,36 +144,6 @@ onClosing(uiWindow* w, void* data)
 	uiQuit();
 	return 1;
 }
-
-static void
-updateProg(void* data)
-{
-	App* app = data;
-	if (!app->installing)
-		return;
-	if (app->progress == NULL) return;
-	app->progValue += 10;
- 
-	if (app->progValue > 100)
-		app->progValue = 100;
-
-	uiProgressBarSetValue(app->progress, app->progValue);
-	char buf[128];
-	snprintf(buf, sizeof(buf), "Installing... %d%%", app->progValue);
-	uiLabelSetText(app->status, buf);
-
-	if (app->progValue >= 100) {
-		if (!app->installing)
-			return;
-
-		app->installing = 0;
-		uiMsgBox(app->win,
-			"Finished.",
-			"Installation has successfully finished!"
-		);
-	}
-}
-
 static void
 onInstallClicked(uiButton* b, void* data)
 {
@@ -155,6 +162,10 @@ onInstallClicked(uiButton* b, void* data)
 		uiQueueMain(updateProg, app);
 	}
 }
+
+/******************************************************************************
+ **                                 pages                                    **
+ *****************************************************************************/
 
 static uiControl*
 makeWelcomePage(void)
