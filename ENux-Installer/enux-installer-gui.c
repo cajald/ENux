@@ -116,7 +116,7 @@ updateProg(void* data)
 		return;
 	if (app->progress == NULL) return;
 	app->progValue += 10;
-
+ 
 	if (app->progValue > 100)
 		app->progValue = 100;
 
@@ -159,24 +159,49 @@ onInstallClicked(uiButton* b, void* data)
 static uiControl*
 makeWelcomePage(void)
 {
-	uiForm* f = uiNewForm();
-	uiFormSetPadded(f, 1);
+	uiBox* vbox = uiNewVerticalBox();
+	uiBoxSetPadded(vbox, 1);
 
-	uiFormAppend(f,
-		"",
-		uiControl(uiNewLabel("Welcome to the ENux installer!")),
-		0
+	/* centered title using spacers */
+	uiBox* titleRow = uiNewHorizontalBox();
+
+	uiLabel* leftSpacer = uiNewLabel("");
+	uiLabel* title = uiNewLabel("ENUX OPERATING SYSTEM");
+	uiLabel* rightSpacer = uiNewLabel("");
+
+	uiBoxAppend(titleRow, uiControl(leftSpacer), 1);
+	uiBoxAppend(titleRow, uiControl(title), 0);
+	uiBoxAppend(titleRow, uiControl(rightSpacer), 1);
+
+	/* subtitle */
+	uiLabel* subtitle = uiNewLabel(
+		"This wizard will guide you through the\n"
+		"installation of ENux on your computer."
 	);
 
-	uiFormAppend(f,
-		"",
+	/* info group */
+	uiGroup* info = uiNewGroup("Before you begin");
+	uiBox* infoBox = uiNewVerticalBox();
+	uiBoxSetPadded(infoBox, 1);
+
+	uiBoxAppend(infoBox,
 		uiControl(uiNewLabel(
-			"This setup will help you set up a working ENux system on your machine"
+			"	• Make sure you selected the correct disk\n"
+			"	• Back up important data\n"
+			"	• Plug in your device during installation"
 		)),
 		0
 	);
 
-	return uiControl(f);
+	uiGroupSetChild(info, uiControl(infoBox));
+
+	/* layout */
+	uiBoxAppend(vbox, uiControl(titleRow), 0);
+	uiBoxAppend(vbox, uiControl(uiNewHorizontalSeparator()), 0);
+	uiBoxAppend(vbox, uiControl(subtitle), 0);
+	uiBoxAppend(vbox, uiControl(info), 0);
+
+	return uiControl(vbox);
 }
 
 static uiControl*
