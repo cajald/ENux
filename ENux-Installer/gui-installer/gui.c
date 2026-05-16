@@ -62,6 +62,43 @@ updateProg(void* data)
  **                                handlers                                  **
  *****************************************************************************/
 
+static int
+onClosing(uiWindow* w, void* data)
+{
+	(void)w;
+	GUI* app = data;
+
+	if (app->installing) {
+		uiMsgBoxError(app->win,
+			"Installer is running!",
+			"Please wait untill installation finishes."
+		);
+		return 0;
+	}
+
+	uiQuit();
+	return 1;
+}
+
+static void
+onQuitClicked(uiButton* b, void* data)
+{
+	(void)b;
+
+	GUI* app = data;
+
+	if (app->installing) {
+		uiMsgBoxError(app->win,
+			"Installer is running!",
+			"Please wait until installation finishes."
+		);
+		return;
+	}
+
+	uiControlDestroy(uiControl(app->win));
+	uiQuit();
+}
+
 static void
 onTabChanged(uiTab* t, void* data)
 {
@@ -105,23 +142,6 @@ onSwapToggle(uiCheckbox* c, void* data)
 		uiControlDisable(uiControl(app->swapSize));
 }
 
-static int
-onClosing(uiWindow* w, void* data)
-{
-	(void)w;
-	GUI* app = data;
-
-	if (app->installing) {
-		uiMsgBoxError(app->win,
-			"Installer is running!",
-			"Please wait untill installation finishes."
-		);
-		return 0;
-	}
-
-	uiQuit();
-	return 1;
-}
 static void
 onInstallClicked(uiButton* b, void* data)
 {
@@ -330,15 +350,18 @@ makeNavBar(GUI* app)
 	uiBox* h = uiNewHorizontalBox();
 	uiBoxSetPadded(h, 1);
 
+	app->quitBtn = uiNewButton("Quit");
 	app->backBtn = uiNewButton("< Back");
 	app->nextBtn = uiNewButton("Next >");
 
 	uiButtonOnClicked(app->backBtn, onBackClicked, app);
 	uiButtonOnClicked(app->nextBtn, onNextClicked, app);
+	uiButtonOnClicked(app->quitBtn, onQuitClicked, app);
 
 	/* align buttons right */
 	uiLabel* spacer = uiNewLabel("");
 
+	uiBoxAppend(h, uiControl(app->quitBtn), 0);
 	uiBoxAppend(h, uiControl(spacer), 1);
 	uiBoxAppend(h, uiControl(app->backBtn), 0);
 	uiBoxAppend(h, uiControl(app->nextBtn), 0);
@@ -367,7 +390,7 @@ setupUI(void)
 	GUI* app = (GUI*)calloc(1, sizeof(GUI));
 
 	app->win = uiNewWindow("ENux Installer", 600, 400, 1);
-	uiWindowOnClosing(app->win, onClosing, &app);
+	uiWindowOnClosing(app->win, onClosing, app);
 
 	app->vbox = uiNewVerticalBox();
 	uiBoxSetPadded(app->vbox, 1);
@@ -384,7 +407,7 @@ setupUI(void)
 	uiTabAppend(app->tab, "Disk", app->pages[1]);
 	uiTabAppend(app->tab, "User", app->pages[2]);
 	uiTabAppend(app->tab, "Install", app->pages[3]);
-	uiTabOnSelected(app->tab, onTabChanged, &app);
+	uiTabOnSelected(app->tab, onTabChanged, app);
 
 	uiBoxAppend(app->vbox, uiControl(app->tab), 1);
 	uiBoxAppend(app->vbox, makeNavBar(app), 0);

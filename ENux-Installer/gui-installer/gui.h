@@ -11,6 +11,7 @@ typedef struct GUI {
 	uiWindow*      win;
 	uiTab*         tab;
 	uiBox*         vbox;
+	uiButton*      quitBtn;
 	uiButton*      nextBtn;
 	uiButton*      backBtn;
 	uiEntry*       userEnt;
