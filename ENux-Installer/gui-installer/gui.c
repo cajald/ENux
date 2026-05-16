@@ -11,7 +11,7 @@
 
 #include "ui.h"
 
-typedef struct App {
+typedef struct GUI {
 	uiWindow*      win;
 	uiTab*         tab;
 	uiBox*         vbox;
@@ -31,14 +31,14 @@ typedef struct App {
 	int            progValue;
 	int            page;
 	uiControl*     pages[4];
-} App;
+} GUI;
 
 /******************************************************************************
  **                                 helpers                                  **
  *****************************************************************************/
 
 static void
-updateNav(App* app)
+updateNav(GUI* app)
 {
 	if (app->page <= 0)
 		uiControlDisable(uiControl(app->backBtn));
@@ -54,7 +54,7 @@ updateNav(App* app)
 static void
 updateProg(void* data)
 {
-	App* app = data;
+	GUI* app = data;
 	if (!app->installing)
 		return;
 	if (app->progress == NULL) return;
@@ -87,7 +87,7 @@ updateProg(void* data)
 static void
 onTabChanged(uiTab* t, void* data)
 {
-	App* app = data;
+	GUI* app = data;
 
 	if (uiTabSelected(t) != app->page)
 		uiTabSetSelected(t, app->page);
@@ -96,7 +96,7 @@ onTabChanged(uiTab* t, void* data)
 static void
 onNextClicked(uiButton* b, void* data)
 {
-	App* app = data;
+	GUI* app = data;
 	if (app->page < 3)
 		app->page++;
 
@@ -107,7 +107,7 @@ onNextClicked(uiButton* b, void* data)
 static void
 onBackClicked(uiButton* b, void* data)
 {
-	App* app = data;
+	GUI* app = data;
 
 	if (app->page > 0)
 		app->page--;
@@ -119,7 +119,7 @@ onBackClicked(uiButton* b, void* data)
 static void
 onSwapToggle(uiCheckbox* c, void* data)
 {
-	App* app = data;
+	GUI* app = data;
 	int checked = uiCheckboxChecked(app->enableSwap);
 	if (checked)
 		uiControlEnable(uiControl(app->swapSize));
@@ -131,7 +131,7 @@ static int
 onClosing(uiWindow* w, void* data)
 {
 	(void)w;
-	App* app = data;
+	GUI* app = data;
 
 	if (app->installing) {
 		uiMsgBoxError(app->win,
@@ -148,7 +148,7 @@ static void
 onInstallClicked(uiButton* b, void* data)
 {
 	(void)b; /* we know this is the install button */
-	App* app = data;
+	GUI* app = data;
 
 	const char* user = uiEntryText(app->userEnt);
 	const char* disk = uiComboboxSelected(app->diskSelect) >= 0
@@ -216,7 +216,7 @@ makeWelcomePage(void)
 }
 
 static uiControl*
-makeDiskPage(App* app)
+makeDiskPage(GUI* app)
 {
 	uiForm* f = uiNewForm();
 	uiFormSetPadded(f, 1);
@@ -274,7 +274,7 @@ makeDiskPage(App* app)
 }
 
 static uiControl*
-makeUserPage(App* app)
+makeUserPage(GUI* app)
 {
 	uiForm* f = uiNewForm();
 	uiFormSetPadded(f, 1);
@@ -305,7 +305,7 @@ makeUserPage(App* app)
 }
 
 static uiControl*
-makeInstallPage(App* app)
+makeInstallPage(GUI* app)
 {
 	uiBox* vbox = uiNewVerticalBox();
 	uiBoxSetPadded(vbox, 1);
@@ -347,7 +347,7 @@ makeInstallPage(App* app)
 }
 
 static uiControl*
-makeNavBar(App* app)
+makeNavBar(GUI* app)
 {
 	uiBox* h = uiNewHorizontalBox();
 	uiBoxSetPadded(h, 1);
@@ -374,7 +374,7 @@ makeNavBar(App* app)
  **                                  main                                    **
  *****************************************************************************/
 
-App*
+GUI*
 setupUI(void)
 {
 	uiInitOptions o = { 0 };
@@ -386,7 +386,7 @@ setupUI(void)
 		return NULL;
 	}
 
-	App* app = (App*)calloc(1, sizeof(App));
+	GUI* app = (GUI*)calloc(1, sizeof(GUI));
 
 	app->win = uiNewWindow("ENux Installer", 600, 400, 1);
 	uiWindowOnClosing(app->win, onClosing, &app);
@@ -426,7 +426,7 @@ runUI(void)
 }
 
 void
-teardownUI(App* app)
+teardownUI(GUI* app)
 {
 	free(app);
 	uiUninit();

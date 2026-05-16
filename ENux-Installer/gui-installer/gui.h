@@ -5,10 +5,10 @@
 #ifndef GUI_H
 #define GUI_H
 
-typedef struct app App;
-App* setupUI(void);
+typedef struct GUI GUI;
+GUI* setupUI(void);
 void runUI(void);
-void teardownUI(App* app);
+void teardownUI(GUI* app);
 
 #endif /* GUI_H */
 

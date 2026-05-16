@@ -11,7 +11,7 @@ main(int argc, char** argv)
 {
 	(void)argc; (void)argv;
 
-	App* ui = setupUI();
+	GUI* ui = setupUI();
 	if (!ui)
 		return EXIT_FAILURE;
 
