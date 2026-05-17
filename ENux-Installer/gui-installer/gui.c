@@ -2,6 +2,7 @@
  * gui.c -- GUI installer for ENux -- UI
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,7 +26,7 @@ updateNav(GUI* app)
 	else
 		uiControlEnable(uiControl(app->backBtn));
 
-	if (app->page >= 3)
+	if (app->page >= 3 || !app->allowNext)
 		uiControlDisable(uiControl(app->nextBtn));
 	else
 		uiControlEnable(uiControl(app->nextBtn));
@@ -173,7 +174,7 @@ onInstallClicked(uiButton* b, void* data)
 		? "Selected disk"
 		: "No disk selected";
 
-	printf("Installing for user %s on %s\n", user, disk);
+	printf("Installing for user %s with %s\n", user, disk);
 	app->installing = 1;
 
 	for (int i = 0; i <= 10; i++) {
@@ -446,10 +447,11 @@ setupUI(void)
 	uiBoxSetPadded(app->vbox, 1);
 
 	/* pages */
-	app->pages[0] = makeWelcomePage();
-	app->pages[1] = makeDiskPage(app);
-	app->pages[2] = makeUserPage(app);
-	app->pages[3] = makeInstallPage(app);
+	app->pages[0]  = makeWelcomePage();
+	app->pages[1]  = makeDiskPage(app);
+	app->pages[2]  = makeUserPage(app);
+	app->pages[3]  = makeInstallPage(app);
+	app->allowNext = true;
 
 	app->tab = uiNewTab();
 
@@ -474,6 +476,13 @@ void
 runUI(void)
 {
 	uiMain();
+}
+
+void
+blockNext(GUI* app)
+{
+	app->allowNext = false;
+	updateNav(app);
 }
 
 void

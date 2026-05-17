@@ -5,6 +5,8 @@
 #ifndef GUI_H
 #define GUI_H
 
+#include <stdbool.h>
+
 #include <ui.h>
 
 typedef struct GUI {
@@ -32,11 +34,13 @@ typedef struct GUI {
 	int            progValue;
 	int            page;
 	uiControl*     pages[4];
+	bool           allowNext;
 } GUI;
 
 GUI* setupUI(void);
 void runUI(void);
 void teardownUI(GUI* app);
+void blockNext(GUI* app);
 
 #endif /* GUI_H */
 
