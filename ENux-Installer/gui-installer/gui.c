@@ -307,12 +307,21 @@ makeUserPage(GUI* app)
 	uiFormSetPadded(f, 1);
 
 	app->userEnt = uiNewEntry();
+	app->userRealNameEnt = uiNewEntry();
 	app->passEnt = uiNewPasswordEntry();
+	app->repPassEnt = uiNewPasswordEntry();
 	app->rootPassEnt = uiNewPasswordEntry();
+	app->repRootPassEnt = uiNewPasswordEntry();
 
 	uiFormAppend(f,
-		"Username",
+		"Short Username",
 		uiControl(app->userEnt),
+		0
+	);
+
+	uiFormAppend(f,
+		"Real Name",
+		uiControl(app->userRealNameEnt),
 		0
 	);
 
@@ -323,8 +332,20 @@ makeUserPage(GUI* app)
 	);
 
 	uiFormAppend(f,
+		"Repeat password",
+		uiControl(app->repPassEnt),
+		0
+	);
+
+	uiFormAppend(f,
 		"Root password",
 		uiControl(app->rootPassEnt),
+		0
+	);
+
+	uiFormAppend(f,
+		"Repeat root password",
+		uiControl(app->repRootPassEnt),
 		0
 	);
 

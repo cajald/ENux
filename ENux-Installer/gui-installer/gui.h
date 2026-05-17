@@ -16,6 +16,9 @@ typedef struct GUI {
 	uiButton*      backBtn;
 	uiEntry*       userEnt;
 	uiEntry*       passEnt;
+	uiEntry*       repPassEnt;
+	uiEntry*       repRootPassEnt;
+	uiEntry*       userRealNameEnt;
 	uiEntry*       rootPassEnt;
 	uiCombobox*    diskSelect;
 	uiCheckbox*    separateHome;
