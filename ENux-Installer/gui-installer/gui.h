@@ -21,6 +21,7 @@ typedef struct GUI {
 	uiCheckbox*    separateHome;
 	uiCheckbox*    enableSwap;
 	uiSpinbox*     swapSize;
+	uiButton*      partBtn;
 	uiCombobox*    fsType;
 	uiProgressBar* progress;
 	uiLabel*       status;

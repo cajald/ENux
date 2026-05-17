@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <ui.h>
 
@@ -61,6 +63,24 @@ updateProg(void* data)
 /******************************************************************************
  **                                handlers                                  **
  *****************************************************************************/
+
+static void
+onPartClicked(uiButton* b, void* data)
+{
+	(void)b; (void)data;
+
+	pid_t pid = fork();
+
+	if (pid < 0) {
+		/* fork failure */
+		perror("fork error");
+		exit(EXIT_FAILURE);
+	} else if (pid == 0) {
+		/* child */
+		execlp("gparted", "gparted", NULL);
+		_exit(1);
+	}
+}
 
 static int
 onClosing(uiWindow* w, void* data)
@@ -162,7 +182,7 @@ onInstallClicked(uiButton* b, void* data)
 }
 
 /******************************************************************************
- **                                 pages                                    **
+ **                                 content                                  **
  *****************************************************************************/
 
 static uiControl*
@@ -265,6 +285,15 @@ makeDiskPage(GUI* app)
 	uiFormAppend(f,
 		"Swap size (in MB)",
 		uiControl(app->swapSize),
+		0
+	);
+
+	app->partBtn = uiNewButton("Open gparted");
+	uiButtonOnClicked(app->partBtn, onPartClicked, app);
+
+	uiFormAppend(f,
+		"Partition editor",
+		uiControl(app->partBtn),
 		0
 	);
 
