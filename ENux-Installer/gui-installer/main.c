@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "gui.h"
+#include "run.h"
 
 bool
 checkroot(void)

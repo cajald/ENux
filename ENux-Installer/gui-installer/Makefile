@@ -4,7 +4,7 @@
 # This builds the GUI installer, and provides a few utilities to help install the rest
 #
 
-CFILES   := gui.c main.c
+CFILES   := gui.c main.c run.c
 OFILES   := $(CFILES:.c=.o)
 TARG     := enux-installer-gui
 CC       := gcc
