@@ -30,6 +30,7 @@ typedef struct GUI {
 	uiCombobox*    fsType;
 	uiProgressBar* progress;
 	uiLabel*       status;
+	void           (*nextCb)(struct GUI* gui);
 	int            installing;
 	int            progValue;
 	int            page;
@@ -37,7 +38,14 @@ typedef struct GUI {
 	bool           allowNext;
 } GUI;
 
-GUI* setupUI(void);
+enum {
+	PAGE_WELCOME = 0,
+	PAGE_DISK, 
+	PAGE_USER,
+	PAGE_INSTALL,
+};
+
+GUI* setupUI(void (*nextCb)(GUI*));
 void runUI(void);
 void teardownUI(GUI* app);
 void blockNext(GUI* app);

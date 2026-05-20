@@ -14,6 +14,8 @@
 
 #include "gui.h"
 
+extern void onAnyInputChanged(uiEntry*, void*);
+
 /******************************************************************************
  **                                 helpers                                  **
  *****************************************************************************/
@@ -21,15 +23,10 @@
 static void
 updateNav(GUI* app)
 {
-	if (app->page <= 0)
-		uiControlDisable(uiControl(app->backBtn));
-	else
-		uiControlEnable(uiControl(app->backBtn));
-
-	if (app->page >= 3 || !app->allowNext)
+	uiControlEnable(uiControl(app->backBtn));
+	uiControlEnable(uiControl(app->nextBtn));
+	if (!app->allowNext)
 		uiControlDisable(uiControl(app->nextBtn));
-	else
-		uiControlEnable(uiControl(app->nextBtn));
 }
 
 static void
@@ -133,6 +130,13 @@ static void
 onNextClicked(uiButton* b, void* data)
 {
 	GUI* app = data;
+
+	if (app->nextCb)
+		app->nextCb(app);
+
+	if (!app->allowNext)
+		return;
+
 	if (app->page < 3)
 		app->page++;
 
@@ -411,9 +415,13 @@ makeNavBar(GUI* app)
 
 	/* align buttons right */
 	uiLabel* spacer = uiNewLabel("");
+	uiLabel* spacer2 = uiNewLabel("");
 
 	uiBoxAppend(h, uiControl(app->quitBtn), 0);
 	uiBoxAppend(h, uiControl(spacer), 1);
+	if (!app->allowNext)
+		uiBoxAppend(h, uiControl(uiNewLabel("Invalid fields")), 0);
+	uiBoxAppend(h, uiControl(spacer2), 1);
 	uiBoxAppend(h, uiControl(app->backBtn), 0);
 	uiBoxAppend(h, uiControl(app->nextBtn), 0);
 
@@ -427,7 +435,7 @@ makeNavBar(GUI* app)
  *****************************************************************************/
 
 GUI*
-setupUI(void)
+setupUI(void (*nextCb)(GUI*))
 {
 	uiInitOptions o = { 0 };
 	const char* err = uiInit(&o);
@@ -439,6 +447,7 @@ setupUI(void)
 	}
 
 	GUI* app = (GUI*)calloc(1, sizeof(GUI));
+	app->nextCb = nextCb;
 
 	app->win = uiNewWindow("ENux Installer", 600, 400, 1);
 	uiWindowOnClosing(app->win, onClosing, app);
@@ -454,6 +463,10 @@ setupUI(void)
 	app->allowNext = true;
 
 	app->tab = uiNewTab();
+
+	uiEntryOnChanged(app->userEnt, onAnyInputChanged, app);
+	uiEntryOnChanged(app->passEnt, onAnyInputChanged, app);
+	uiEntryOnChanged(app->repPassEnt, onAnyInputChanged, app);
 
 	uiTabAppend(app->tab, "Welcome", app->pages[0]);
 	uiTabAppend(app->tab, "Disk", app->pages[1]);

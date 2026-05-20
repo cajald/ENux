@@ -13,6 +13,8 @@
 #include "gui.h"
 #include "run.h"
 
+extern void nextCb(GUI* app);
+
 bool
 checkroot(void)
 {
@@ -59,7 +61,7 @@ main(int argc, char** argv)
 		return EXIT_FAILURE;
 	}
 
-	GUI* ui = setupUI();
+	GUI* ui = setupUI(nextCb);
 	if (!ui)
 		return EXIT_FAILURE;
 
