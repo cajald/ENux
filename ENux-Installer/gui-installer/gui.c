@@ -13,6 +13,7 @@
 #include <ui.h>
 
 #include "gui.h"
+#include "part.h"
 
 /******************************************************************************
  **                                 helpers                                  **
@@ -245,9 +246,32 @@ makeDiskPage(GUI* app)
 	uiFormSetPadded(f, 1);
 
 	app->diskSelect = uiNewCombobox();
-	uiComboboxAppend(app->diskSelect, "/dev/sda (512GiB SSD)");
-	uiComboboxAppend(app->diskSelect, "/dev/nvme0n1 (1TiB NVMe)");
-	uiComboboxAppend(app->diskSelect, "/dev/sda (2GB Extractible medium)");
+	size_t n = 0;
+	Part* parts = getparts(&n);
+
+	if (!parts) {
+		uiComboboxAppend(app->diskSelect, "<No disks found>");
+	} else {
+		for (size_t i = 0; i < n; i++) {
+			if (parts[i].minor != 0)
+				continue;
+			char label[128];
+
+			double gib = parts[i].blocks / (1024.0 * 1024.0);
+
+			snprintf(
+				label,
+				sizeof(label),
+				"/dev/%s (%.1f GiB)",
+				parts[i].name,
+				gib
+			);
+
+			uiComboboxAppend(app->diskSelect, label);
+		}
+
+		free(parts);
+	}
 
 	uiFormAppend(f,
 		"Select install disk",
