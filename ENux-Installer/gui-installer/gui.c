@@ -14,13 +14,11 @@
 
 #include "gui.h"
 
-extern void onAnyInputChanged(uiEntry*, void*);
-
 /******************************************************************************
  **                                 helpers                                  **
  *****************************************************************************/
 
-static void
+void
 updateNav(GUI* app)
 {
 	uiControlEnable(uiControl(app->backBtn));
@@ -165,6 +163,8 @@ onSwapToggle(uiCheckbox* c, void* data)
 		uiControlEnable(uiControl(app->swapSize));
 	else
 		uiControlDisable(uiControl(app->swapSize));
+
+	validateAll(app);
 }
 
 static void
@@ -464,9 +464,13 @@ setupUI(void (*nextCb)(GUI*))
 
 	app->tab = uiNewTab();
 
-	uiEntryOnChanged(app->userEnt, onAnyInputChanged, app);
-	uiEntryOnChanged(app->passEnt, onAnyInputChanged, app);
-	uiEntryOnChanged(app->repPassEnt, onAnyInputChanged, app);
+	uiEntryOnChanged(app->userEnt, onEntryChanged, app);
+	uiEntryOnChanged(app->passEnt, onEntryChanged, app);
+	uiEntryOnChanged(app->repPassEnt, onEntryChanged, app);
+	uiComboboxOnSelected(app->fsType, onComboChanged, app);
+
+	uiCheckboxOnToggled(app->enableSwap, onCheckToggled, app);
+	uiSpinboxOnChanged(app->swapSize, onSpinChanged, app);
 
 	uiTabAppend(app->tab, "Welcome", app->pages[0]);
 	uiTabAppend(app->tab, "Disk", app->pages[1]);

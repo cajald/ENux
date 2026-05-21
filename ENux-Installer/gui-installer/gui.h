@@ -48,7 +48,15 @@ enum {
 GUI* setupUI(void (*nextCb)(GUI*));
 void runUI(void);
 void teardownUI(GUI* app);
+void updateNav(GUI* app);
 void blockNext(GUI* app);
+
+void validateAll(GUI* app);
+
+void onEntryChanged(uiEntry* e, void* data);
+void onComboChanged(uiCombobox* c, void* data);
+void onSpinChanged(uiSpinbox* s, void* data);
+void onCheckToggled(uiCheckbox* c, void* data);
 
 #endif /* GUI_H */
 
