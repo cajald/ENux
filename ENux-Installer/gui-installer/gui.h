@@ -22,6 +22,12 @@ typedef struct GUI {
 	uiEntry*       repRootPassEnt;
 	uiEntry*       userRealNameEnt;
 	uiEntry*       rootPassEnt;
+	char           diskLabels[128][128];
+	int            diskLabelCount;
+	uiCombobox*    rootPartSelect;
+	uiCombobox*    bootPartSelect;
+	uiCombobox*    swapPartSelect;
+	uiCombobox*    homePartSelect;
 	uiCombobox*    diskSelect;
 	uiCheckbox*    separateHome;
 	uiCheckbox*    enableSwap;

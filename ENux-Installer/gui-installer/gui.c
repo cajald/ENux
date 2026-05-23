@@ -9,47 +9,108 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include <ui.h>
 
 #include "gui.h"
 #include "part.h"
 
+#ifdef __GNUC__
+#	define USED __attribute__((used))
+#else
+#	define USED
+#endif
+
 /******************************************************************************
  **                                 helpers                                  **
  *****************************************************************************/
 
+static void
+fillPartBox(uiCombobox* box)
+{
+	uiComboboxClear(box);
+
+	size_t n = 0;
+	Part* parts = getparts(&n);
+
+	if (!parts) {
+		uiComboboxAppend(box, "<No partitions found>");
+		return;
+	}
+
+	for (size_t i = 0; i < n; i++) {
+
+		/* skip whole disks */
+		if (parts[i].minor == 0)
+			continue;
+
+		char label[128];
+
+		double gib = parts[i].blocks / (1024.0 * 1024.0);
+
+		snprintf(label,
+			sizeof(label),
+			"/dev/%s (%.1f GiB)",
+			parts[i].name,
+			gib
+		);
+
+		uiComboboxAppend(box, label);
+	}
+
+	free(parts);
+}
+
 void
 updateNav(GUI* app)
 {
-	uiControlEnable(uiControl(app->backBtn));
+	if (app->page > 0)
+		uiControlEnable(uiControl(app->backBtn));
+	else
+		uiControlDisable(uiControl(app->backBtn));
+
 	uiControlEnable(uiControl(app->nextBtn));
+
 	if (!app->allowNext)
 		uiControlDisable(uiControl(app->nextBtn));
 }
 
-static void
+static USED void
 updateProg(void* data)
 {
 	GUI* app = data;
+
 	if (!app->installing)
 		return;
-	if (app->progress == NULL) return;
+
+	if (app->progress == NULL)
+		return;
+
 	app->progValue += 10;
- 
+
 	if (app->progValue > 100)
 		app->progValue = 100;
 
 	uiProgressBarSetValue(app->progress, app->progValue);
+
 	char buf[128];
-	snprintf(buf, sizeof(buf), "Installing... %d%%", app->progValue);
+
+	snprintf(buf,
+		sizeof(buf),
+		"Installing... %d%%",
+		app->progValue
+	);
+
 	uiLabelSetText(app->status, buf);
 
 	if (app->progValue >= 100) {
+
 		if (!app->installing)
 			return;
 
 		app->installing = 0;
+
 		uiMsgBox(app->win,
 			"Finished.",
 			"Installation has successfully finished!"
@@ -61,39 +122,47 @@ updateProg(void* data)
  **                                handlers                                  **
  *****************************************************************************/
 
-static void
+static USED void
 onPartClicked(uiButton* b, void* data)
 {
-	(void)b; (void)data;
+	(void)b;
+	(void)data;
 
 	pid_t pid = fork();
 
 	if (pid < 0) {
+
 		/* fork failure */
 		perror("fork error");
 		exit(EXIT_FAILURE);
+
 	} else if (pid == 0) {
+
 		/* child */
 		execlp("gparted", "gparted", NULL);
 		_exit(1);
 	}
 }
 
-static int
+static USED int
 onClosing(uiWindow* w, void* data)
 {
 	(void)w;
+
 	GUI* app = data;
 
 	if (app->installing) {
+
 		uiMsgBoxError(app->win,
 			"Installer is running!",
 			"Please wait untill installation finishes."
 		);
+
 		return 0;
 	}
 
 	uiQuit();
+
 	return 1;
 }
 
@@ -105,10 +174,12 @@ onQuitClicked(uiButton* b, void* data)
 	GUI* app = data;
 
 	if (app->installing) {
+
 		uiMsgBoxError(app->win,
 			"Installer is running!",
 			"Please wait until installation finishes."
 		);
+
 		return;
 	}
 
@@ -116,18 +187,21 @@ onQuitClicked(uiButton* b, void* data)
 	uiQuit();
 }
 
-static void
+static USED void
 onTabChanged(uiTab* t, void* data)
 {
 	GUI* app = data;
 
-	if (uiTabSelected(t) != app->page)
-		uiTabSetSelected(t, app->page);
+	app->page = uiTabSelected(t);
+
+	updateNav(app);
 }
 
 static void
 onNextClicked(uiButton* b, void* data)
 {
+	(void)b;
+
 	GUI* app = data;
 
 	if (app->nextCb)
@@ -140,26 +214,34 @@ onNextClicked(uiButton* b, void* data)
 		app->page++;
 
 	uiTabSetSelected(app->tab, app->page);
+
 	updateNav(app);
 }
 
 static void
 onBackClicked(uiButton* b, void* data)
 {
+	(void)b;
+
 	GUI* app = data;
 
 	if (app->page > 0)
 		app->page--;
 
 	uiTabSetSelected(app->tab, app->page);
+
 	updateNav(app);
 }
 
-static void
+static USED void
 onSwapToggle(uiCheckbox* c, void* data)
 {
+	(void)c;
+
 	GUI* app = data;
+
 	int checked = uiCheckboxChecked(app->enableSwap);
+
 	if (checked)
 		uiControlEnable(uiControl(app->swapSize));
 	else
@@ -171,20 +253,26 @@ onSwapToggle(uiCheckbox* c, void* data)
 static void
 onInstallClicked(uiButton* b, void* data)
 {
-	(void)b; /* we know this is the install button */
+	(void)b;
+
 	GUI* app = data;
 
 	const char* user = uiEntryText(app->userEnt);
-	const char* disk = uiComboboxSelected(app->diskSelect) >= 0
-		? "Selected disk"
-		: "No disk selected";
 
-	printf("Installing for user %s with %s\n", user, disk);
+	const char* disk =
+		uiComboboxSelected(app->diskSelect) >= 0
+			? "Selected disk"
+			: "No disk selected";
+
+	printf("Installing for user %s with %s\n",
+		user,
+		disk
+	);
+
 	app->installing = 1;
 
-	for (int i = 0; i <= 10; i++) {
+	for (int i = 0; i <= 10; i++)
 		uiQueueMain(updateProg, app);
-	}
 }
 
 /******************************************************************************
@@ -195,13 +283,20 @@ static uiControl*
 makeWelcomePage(void)
 {
 	uiBox* vbox = uiNewVerticalBox();
+
 	uiBoxSetPadded(vbox, 1);
 
-	/* centered title using spacers */
+	/* There is this neat trick to center stuff on libui, make two spacers, and append them
+	 * in order (here leftSpacer > title > rightSpacer), and make them strechy (the last arg
+	 * on uiBoxAppend set to 1).
+	 *
+	 * TODO: Use uiAttributedString for this, backlog priority since it is visual, this is
+	 * already readable enough, I have bigger problems, and its API is mayhem.
+	 */
 	uiBox* titleRow = uiNewHorizontalBox();
 
-	uiLabel* leftSpacer = uiNewLabel("");
-	uiLabel* title = uiNewLabel("ENUX OPERATING SYSTEM");
+	uiLabel* leftSpacer  = uiNewLabel("");
+	uiLabel* title       = uiNewLabel("ENUX OPERATING SYSTEM");
 	uiLabel* rightSpacer = uiNewLabel("");
 
 	uiBoxAppend(titleRow, uiControl(leftSpacer), 1);
@@ -210,13 +305,15 @@ makeWelcomePage(void)
 
 	/* subtitle */
 	uiLabel* subtitle = uiNewLabel(
-		"This wizard will guide you through the\n"
+		"This wizard will guide you through the "
 		"installation of ENux on your computer."
 	);
 
 	/* info group */
 	uiGroup* info = uiNewGroup("Before you begin");
+
 	uiBox* infoBox = uiNewVerticalBox();
+
 	uiBoxSetPadded(infoBox, 1);
 
 	uiBoxAppend(infoBox,
@@ -243,31 +340,44 @@ static uiControl*
 makeDiskPage(GUI* app)
 {
 	uiForm* f = uiNewForm();
+
 	uiFormSetPadded(f, 1);
 
 	app->diskSelect = uiNewCombobox();
+
 	size_t n = 0;
+
 	Part* parts = getparts(&n);
 
 	if (!parts) {
-		uiComboboxAppend(app->diskSelect, "<No disks found>");
+
+		uiComboboxAppend(app->diskSelect,
+			"<No disks found>"
+		);
+
 	} else {
+
 		for (size_t i = 0; i < n; i++) {
+
 			if (parts[i].minor != 0)
 				continue;
+
 			char label[128];
 
-			double gib = parts[i].blocks / (1024.0 * 1024.0);
+			double gib =
+				parts[i].blocks /
+				(1024.0 * 1024.0);
 
-			snprintf(
-				label,
+			snprintf(label,
 				sizeof(label),
 				"/dev/%s (%.1f GiB)",
 				parts[i].name,
 				gib
 			);
 
-			uiComboboxAppend(app->diskSelect, label);
+			uiComboboxAppend(app->diskSelect,
+				label
+			);
 		}
 
 		free(parts);
@@ -279,7 +389,42 @@ makeDiskPage(GUI* app)
 		0
 	);
 
+	app->bootPartSelect = uiNewCombobox();
+	app->rootPartSelect = uiNewCombobox();
+	app->swapPartSelect = uiNewCombobox();
+	app->homePartSelect = uiNewCombobox();
+
+	fillPartBox(app->bootPartSelect);
+	fillPartBox(app->rootPartSelect);
+	fillPartBox(app->swapPartSelect);
+	fillPartBox(app->homePartSelect);
+
+	uiFormAppend(f,
+		"Boot partition",
+		uiControl(app->bootPartSelect),
+		0
+	);
+
+	uiFormAppend(f,
+		"Root partition",
+		uiControl(app->rootPartSelect),
+		0
+	);
+
+	uiFormAppend(f,
+		"Swap partition",
+		uiControl(app->swapPartSelect),
+		0
+	);
+
+	uiFormAppend(f,
+		"Home partition",
+		uiControl(app->homePartSelect),
+		0
+	);
+
 	app->fsType = uiNewCombobox();
+
 	uiComboboxAppend(app->fsType, "ext4");
 	uiComboboxAppend(app->fsType, "btrfs");
 	uiComboboxAppend(app->fsType, "zfs");
@@ -290,7 +435,8 @@ makeDiskPage(GUI* app)
 		0
 	);
 
-	app->separateHome = uiNewCheckbox("Separate /home partition");
+	app->separateHome =
+		uiNewCheckbox("Separate /home partition");
 
 	uiFormAppend(f,
 		"Separate home",
@@ -299,7 +445,11 @@ makeDiskPage(GUI* app)
 	);
 
 	app->enableSwap = uiNewCheckbox("Enable swap");
-	uiCheckboxOnToggled(app->enableSwap, onSwapToggle, app);
+
+	uiCheckboxOnToggled(app->enableSwap,
+		onSwapToggle,
+		app
+	);
 
 	uiFormAppend(f,
 		"Enable swap",
@@ -308,8 +458,10 @@ makeDiskPage(GUI* app)
 	);
 
 	app->swapSize = uiNewSpinbox(0, INT32_MAX);
+
 	uiSpinboxSetValue(app->swapSize, 1024);
-	uiControlDisable(uiControl(app->swapSize)); /* start disabled */
+
+	uiControlDisable(uiControl(app->swapSize));
 
 	uiFormAppend(f,
 		"Swap size (in MB)",
@@ -318,7 +470,11 @@ makeDiskPage(GUI* app)
 	);
 
 	app->partBtn = uiNewButton("Open gparted");
-	uiButtonOnClicked(app->partBtn, onPartClicked, app);
+
+	uiButtonOnClicked(app->partBtn,
+		onPartClicked,
+		app
+	);
 
 	uiFormAppend(f,
 		"Partition editor",
@@ -333,14 +489,15 @@ static uiControl*
 makeUserPage(GUI* app)
 {
 	uiForm* f = uiNewForm();
+
 	uiFormSetPadded(f, 1);
 
-	app->userEnt = uiNewEntry();
+	app->userEnt         = uiNewEntry();
 	app->userRealNameEnt = uiNewEntry();
-	app->passEnt = uiNewPasswordEntry();
-	app->repPassEnt = uiNewPasswordEntry();
-	app->rootPassEnt = uiNewPasswordEntry();
-	app->repRootPassEnt = uiNewPasswordEntry();
+	app->passEnt         = uiNewPasswordEntry();
+	app->repPassEnt      = uiNewPasswordEntry();
+	app->rootPassEnt     = uiNewPasswordEntry();
+	app->repRootPassEnt  = uiNewPasswordEntry();
 
 	uiFormAppend(f,
 		"Short Username",
@@ -385,12 +542,17 @@ static uiControl*
 makeInstallPage(GUI* app)
 {
 	uiBox* vbox = uiNewVerticalBox();
+
 	uiBoxSetPadded(vbox, 1);
 
 	/* status */
 	app->status = uiNewLabel("Ready to install.");
+
 	uiGroup* statusGroup = uiNewGroup("Status");
-	uiGroupSetChild(statusGroup, uiControl(app->status));
+
+	uiGroupSetChild(statusGroup,
+		uiControl(app->status)
+	);
 
 	uiBoxAppend(uiBox(vbox),
 		uiControl(statusGroup),
@@ -400,8 +562,12 @@ makeInstallPage(GUI* app)
 	/* progress */
 	app->progress = uiNewProgressBar();
 
-	uiGroup* progressGroup = uiNewGroup("Progress");
-	uiGroupSetChild(progressGroup, uiControl(app->progress));
+	uiGroup* progressGroup =
+		uiNewGroup("Progress");
+
+	uiGroupSetChild(progressGroup,
+		uiControl(app->progress)
+	);
 
 	uiBoxAppend(uiBox(vbox),
 		uiControl(progressGroup),
@@ -409,12 +575,17 @@ makeInstallPage(GUI* app)
 	);
 
 	uiButton* btn = uiNewButton("Install now!");
-	uiButtonOnClicked(btn, onInstallClicked, app);
+
+	uiButtonOnClicked(btn,
+		onInstallClicked,
+		app
+	);
 
 	uiBoxAppend(uiBox(vbox),
 		uiControl(uiNewHorizontalSeparator()),
 		0
 	);
+
 	uiBoxAppend(uiBox(vbox),
 		uiControl(btn),
 		0
@@ -427,27 +598,62 @@ static uiControl*
 makeNavBar(GUI* app)
 {
 	uiBox* h = uiNewHorizontalBox();
+
 	uiBoxSetPadded(h, 1);
 
 	app->quitBtn = uiNewButton("Quit");
 	app->backBtn = uiNewButton("< Back");
 	app->nextBtn = uiNewButton("Next >");
 
-	uiButtonOnClicked(app->backBtn, onBackClicked, app);
-	uiButtonOnClicked(app->nextBtn, onNextClicked, app);
-	uiButtonOnClicked(app->quitBtn, onQuitClicked, app);
+	uiButtonOnClicked(app->backBtn,
+		onBackClicked,
+		app
+	);
+
+	uiButtonOnClicked(app->nextBtn,
+		onNextClicked,
+		app
+	);
+
+	uiButtonOnClicked(app->quitBtn,
+		onQuitClicked,
+		app
+	);
 
 	/* align buttons right */
-	uiLabel* spacer = uiNewLabel("");
+	uiLabel* spacer  = uiNewLabel("");
 	uiLabel* spacer2 = uiNewLabel("");
 
-	uiBoxAppend(h, uiControl(app->quitBtn), 0);
-	uiBoxAppend(h, uiControl(spacer), 1);
+	uiBoxAppend(h,
+		uiControl(app->quitBtn),
+		0
+	);
+
+	uiBoxAppend(h,
+		uiControl(spacer),
+		1
+	);
+
 	if (!app->allowNext)
-		uiBoxAppend(h, uiControl(uiNewLabel("Invalid fields")), 0);
-	uiBoxAppend(h, uiControl(spacer2), 1);
-	uiBoxAppend(h, uiControl(app->backBtn), 0);
-	uiBoxAppend(h, uiControl(app->nextBtn), 0);
+		uiBoxAppend(h,
+			uiControl(uiNewLabel("Invalid fields")),
+			0
+		);
+
+	uiBoxAppend(h,
+		uiControl(spacer2),
+		1
+	);
+
+	uiBoxAppend(h,
+		uiControl(app->backBtn),
+		0
+	);
+
+	uiBoxAppend(h,
+		uiControl(app->nextBtn),
+		0
+	);
 
 	updateNav(app);
 
@@ -462,50 +668,120 @@ GUI*
 setupUI(void (*nextCb)(GUI*))
 {
 	uiInitOptions o = { 0 };
+
 	const char* err = uiInit(&o);
 
 	if (err != NULL) {
-		fprintf(stderr, "init errror (libui): %s\n", err);
+
+		fprintf(stderr,
+			"init errror (libui): %s\n",
+			err
+		);
+
 		uiFreeInitError(err);
+
 		return NULL;
 	}
 
 	GUI* app = (GUI*)calloc(1, sizeof(GUI));
+
 	app->nextCb = nextCb;
 
-	app->win = uiNewWindow("ENux Installer", 600, 400, 1);
-	uiWindowOnClosing(app->win, onClosing, app);
+	app->win = uiNewWindow(
+		"ENux Installer",
+		600,
+		400,
+		1
+	);
+
+	uiWindowOnClosing(app->win,
+		onClosing,
+		app
+	);
 
 	app->vbox = uiNewVerticalBox();
+
 	uiBoxSetPadded(app->vbox, 1);
 
 	/* pages */
-	app->pages[0]  = makeWelcomePage();
-	app->pages[1]  = makeDiskPage(app);
-	app->pages[2]  = makeUserPage(app);
-	app->pages[3]  = makeInstallPage(app);
+	app->pages[0] = makeWelcomePage();
+	app->pages[1] = makeDiskPage(app);
+	app->pages[2] = makeUserPage(app);
+	app->pages[3] = makeInstallPage(app);
+
 	app->allowNext = true;
 
 	app->tab = uiNewTab();
 
-	uiEntryOnChanged(app->userEnt, onEntryChanged, app);
-	uiEntryOnChanged(app->passEnt, onEntryChanged, app);
-	uiEntryOnChanged(app->repPassEnt, onEntryChanged, app);
-	uiComboboxOnSelected(app->fsType, onComboChanged, app);
+	uiEntryOnChanged(app->userEnt,
+		onEntryChanged,
+		app
+	);
 
-	uiCheckboxOnToggled(app->enableSwap, onCheckToggled, app);
-	uiSpinboxOnChanged(app->swapSize, onSpinChanged, app);
+	uiEntryOnChanged(app->passEnt,
+		onEntryChanged,
+		app
+	);
 
-	uiTabAppend(app->tab, "Welcome", app->pages[0]);
-	uiTabAppend(app->tab, "Disk", app->pages[1]);
-	uiTabAppend(app->tab, "User", app->pages[2]);
-	uiTabAppend(app->tab, "Install", app->pages[3]);
-	uiTabOnSelected(app->tab, onTabChanged, app);
+	uiEntryOnChanged(app->repPassEnt,
+		onEntryChanged,
+		app
+	);
 
-	uiBoxAppend(app->vbox, uiControl(app->tab), 1);
-	uiBoxAppend(app->vbox, makeNavBar(app), 0);
+	uiComboboxOnSelected(app->fsType,
+		onComboChanged,
+		app
+	);
 
-	uiWindowSetChild(app->win, uiControl(app->vbox));
+	uiCheckboxOnToggled(app->enableSwap,
+		onCheckToggled,
+		app
+	);
+
+	uiSpinboxOnChanged(app->swapSize,
+		onSpinChanged,
+		app
+	);
+
+	uiTabAppend(app->tab,
+		"Welcome",
+		app->pages[0]
+	);
+
+	uiTabAppend(app->tab,
+		"Disk",
+		app->pages[1]
+	);
+
+	uiTabAppend(app->tab,
+		"User",
+		app->pages[2]
+	);
+
+	uiTabAppend(app->tab,
+		"Install",
+		app->pages[3]
+	);
+
+	uiTabOnSelected(app->tab,
+		onTabChanged,
+		app
+	);
+
+	uiBoxAppend(app->vbox,
+		uiControl(app->tab),
+		1
+	);
+
+	uiBoxAppend(app->vbox,
+		makeNavBar(app),
+		0
+	);
+
+	uiWindowSetChild(app->win,
+		uiControl(app->vbox)
+	);
+
 	uiWindowSetMargined(app->win, 1);
 
 	uiControlShow(uiControl(app->win));
@@ -523,6 +799,7 @@ void
 blockNext(GUI* app)
 {
 	app->allowNext = false;
+
 	updateNav(app);
 }
 
@@ -530,6 +807,7 @@ void
 teardownUI(GUI* app)
 {
 	free(app);
+
 	uiUninit();
 }
 

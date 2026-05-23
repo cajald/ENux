@@ -4,8 +4,41 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "gui.h"
+#include "run.h"
 #include "part.h"
+
+void
+getSelectedDiskName(GUI* app, char* out, size_t outsz)
+{
+	int idx = uiComboboxSelected(app->diskSelect);
+
+	if (idx < 0 || idx >= app->diskLabelCount || app->diskLabelCount == 0) {
+		out[0] = '\0';
+		return;
+	}
+
+	const char* label = app->diskLabels[idx];
+
+	const char* start = strstr(label, "/dev/");
+	if (!start) {
+		out[0] = '\0';
+		return;
+	}
+
+	const char* end = strchr(start, ' ');
+	if (!end)
+		end = start + strlen(start);
+
+	size_t len = (size_t)(end - start);
+	if (len >= outsz) len = outsz - 1;
+
+	strncpy(out, start, len);
+	out[len] = '\0';
+}
+
 
 Part*
 getparts(size_t* count)
