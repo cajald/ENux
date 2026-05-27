@@ -2,5 +2,5 @@
  * run.h -- runcmd() interface
  */
 
-void runcmd(const char* cmd);
+void runcmd(const char* fmt, ...);
 

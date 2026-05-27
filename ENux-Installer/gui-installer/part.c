@@ -10,6 +10,98 @@
 #include "run.h"
 #include "part.h"
 
+/* For ZFS */
+static void
+ensurepool(const char* part)
+{
+	if (system("zpool list zroot >/dev/null 2>&1") != 0) {
+		runcmd(
+			"zpool create "
+			"-f "
+			"-o ashift=12 " 
+			"-O atime=off "
+			"-O compression=lz4 "
+			"zroot ",
+			part
+		);
+	}
+}
+
+static void
+createZfsDataset(const char* part, const char* dataset, const char* mountpoint)
+{
+	char cmd[512];
+
+	ensurepool(part);
+
+	snprintf(
+		cmd,
+		sizeof(cmd),
+		"zfs create -o mountpoint=%s zroot/%s",
+		mountpoint,
+		dataset
+	);
+
+	runcmd(cmd);
+}
+
+static void
+runMkfs(const char* fmt, const char* part)
+{
+	char cmd[512];
+	snprintf(cmd, sizeof(cmd), fmt, part);
+	runcmd(cmd);
+}
+
+void
+makeFs(enum fstype ft, const char* part)
+{
+	switch (ft) {
+		case EFST_EXT4:
+			runMkfs(
+				"mkfs.ext4 -L \"ENux Partition\" %s",
+				part
+			);
+			break;
+
+		case EFST_BTRFS:
+			runMkfs(
+				"mkfs.btrfs -L \"ENux Partition\" %s",
+				part
+			);
+			break;
+
+		case EFST_XFS:
+			runMkfs(
+				"mkfs.xfs -L \"ENux Partition\" %s",
+				part
+			);
+			break;
+
+		case EFST_ZFS:
+			/*
+			 * ZFS likes to be special here, it does not have a mkfs tool
+			 * like all previous fs types. We need to make a zpool if it
+			 * does not exist (root-on-ZFS), and THEN make a ZFS dataset.
+			 */
+			createZfsDataset(part, "ROOT/default", "/");
+			runcmd("zpool set bootfs=zroot/ROOT/default zroot");
+			break;
+
+		case EFST_SWAP:
+			runMkfs(
+				"mkswap -L \"ENux Swap\" %s",
+				part
+			);
+
+			runMkfs(
+				"swapon %s",
+				part
+			);
+			break;
+	}
+}
+
 void
 getSelectedDiskName(GUI* app, char* out, size_t outsz)
 {
